@@ -1,83 +1,77 @@
-version: "3.4"
-
+version: "3.9"
 services:
-  php:
-    build:
-      context: .
-      target: app_php
-      args:
-        SYMFONY_VERSION: ${SYMFONY_VERSION:-}
-        STABILITY: ${STABILITY:-stable}
-    restart: unless-stopped
-    volumes:
-      - php_socket:/var/run/php
-    healthcheck:
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
+  mysql:
+    container_name: base_sf_6_mysql
+    image: mysql:8.0
+    restart: always
     environment:
-      # Run "composer require symfony/orm-pack" to install and configure Doctrine ORM
-      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-14}
-      # Run "composer require symfony/mercure-bundle" to install and configure the Mercure integration
-      MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${SERVER_NAME:-localhost}/.well-known/mercure
-      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    
+  adminer:
+    container_name: base_sf_6_adminer
+    image: adminer:4.8.1
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    
+  mailhog:
+    container_name: base_sf_6_mailhog
+    image: mailhog/mailhog:v1.0.1
+    restart: always
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+        
+  php:
+    container_name: base_sf_6_php
+    build: 
+      context: ./docker/php
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mysql
+      - mailhog
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      
   caddy:
-    build:
-      context: .
-      target: app_caddy
+    container_name: base_sf_6_caddy
+    image: caddy:2.6.2-alpine
     depends_on:
       - php
-    environment:
-      SERVER_NAME: ${SERVER_NAME:-localhost, caddy:80}
-      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-    restart: unless-stopped
-    volumes:
-      - php_socket:/var/run/php
-      - caddy_data:/data
-      - caddy_config:/config
     ports:
       # HTTP
       - target: 80
-        published: ${HTTP_PORT:-80}
+        published: 80
         protocol: tcp
       # HTTPS
       - target: 443
-        published: ${HTTPS_PORT:-443}
+        published: 443
         protocol: tcp
       # HTTP/3
       - target: 443
-        published: ${HTTP3_PORT:-443}
+        published: 443
         protocol: udp
-
-# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
-
-###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-14}-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
     volumes:
-      - db-data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./public:/var/www/html/public
+      - ./var/log/caddy:/var/log/caddy
 
 volumes:
-  php_socket:
   caddy_data:
   caddy_config:
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
-
-###> doctrine/doctrine-bundle ###
-  db-data:
-###< doctrine/doctrine-bundle ###

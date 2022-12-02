@@ -1,1 +1,1 @@
-docker exec symfony-php-1 composer $@
+docker exec base_sf_6_php composer $@
