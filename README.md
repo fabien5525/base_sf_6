@@ -18,8 +18,6 @@ A [Docker](https://www.docker.com/)-based installer and runtime for the [Symfony
 * [Installation of extra Docker Compose services](docs/extra-services.md) with Symfony Flex
 * Automatic HTTPS (in dev and in prod!)
 * HTTP/2, HTTP/3 and [Preload](https://symfony.com/doc/current/web_link.html) support
-* Built-in [Mercure](https://symfony.com/doc/current/mercure.html) hub
-* [Vulcain](https://vulcain.rocks) support
 * Native [XDebug](docs/xdebug.md) integration
 * Just 2 services (PHP FPM and Caddy server)
 * Super-readable configuration

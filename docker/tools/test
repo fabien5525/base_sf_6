@@ -1,1 +1,1 @@
-docker exec symfony-php-1 vendor/bin/php-cs-fixer fix && docker exec symfony-php-1 vendor/bin/phpstan analyse src
+docker exec base_sf_6_php vendor/bin/php-cs-fixer fix && docker exec base_sf_6_php vendor/bin/phpstan analyse src
